@@ -8,12 +8,12 @@ const PLANS = [
 ];
 
 const CONTENT_TYPES = [
-  { id: "instagram", label: "Post Instagram", icon: "📸", prompt: (b, t) => Creá un post de Instagram atractivo para un negocio de ${b}. Tema: ${t}. Incluí texto principal (máx 150 palabras), llamado a la acción y 10 hashtags relevantes en español. },
-  { id: "email", label: "Email Marketing", icon: "📧", prompt: (b, t) => Escribí un email de marketing para un negocio de ${b} sobre: ${t}. Tono profesional pero cercano, máx 200 palabras. Incluí asunto, saludo, cuerpo y CTA. },
-  { id: "whatsapp", label: "WhatsApp", icon: "💬", prompt: (b, t) => Redactá un mensaje de WhatsApp Business para ${b} sobre: ${t}. Breve (máx 80 palabras), directo, con emojis moderados y CTA claro. },
-  { id: "ads", label: "Anuncio Ads", icon: "🎯", prompt: (b, t) => Creá un anuncio para Facebook/Instagram Ads de ${b}. Tema: ${t}. Titular (máx 40 caracteres), Descripción (máx 125 caracteres), Texto principal (máx 90 palabras) y CTA. },
-  { id: "linkedin", label: "LinkedIn", icon: "💼", prompt: (b, t) => Escribí un post de LinkedIn para ${b} sobre: ${t}. Tono experto. Gancho inicial potente, desarrollo y conclusión. Máx 200 palabras. },
-  { id: "landing", label: "Landing Page", icon: "🚀", prompt: (b, t) => Creá el copy hero de una landing page de ${b}. Oferta: ${t}. Headline, Subheadline, 3 beneficios clave y CTA principal. },
+  { id: "instagram", label: "Post Instagram", icon: "📸", prompt: (b, t) => `Creá un post de Instagram atractivo para un negocio de ${b}. Tema: ${t}. Incluí texto principal (máx 150 palabras), llamado a la acción y 10 hashtags relevantes en español.` },
+  { id: "email", label: "Email Marketing", icon: "📧", prompt: (b, t) => `Escribí un email de marketing para un negocio de ${b} sobre: ${t}. Tono profesional pero cercano, máx 200 palabras. Incluí asunto, saludo, cuerpo y CTA.` },
+  { id: "whatsapp", label: "WhatsApp", icon: "💬", prompt: (b, t) => `Redactá un mensaje de WhatsApp Business para ${b} sobre: ${t}. Breve (máx 80 palabras), directo, con emojis moderados y CTA claro.` },
+  { id: "ads", label: "Anuncio Ads", icon: "🎯", prompt: (b, t) => `Creá un anuncio para Facebook/Instagram Ads de ${b}. Tema: ${t}. Titular (máx 40 caracteres), Descripción (máx 125 caracteres), Texto principal (máx 90 palabras) y CTA.` },
+  { id: "linkedin", label: "LinkedIn", icon: "💼", prompt: (b, t) => `Escribí un post de LinkedIn para ${b} sobre: ${t}. Tono experto. Gancho inicial potente, desarrollo y conclusión. Máx 200 palabras.` },
+  { id: "landing", label: "Landing Page", icon: "🚀", prompt: (b, t) => `Creá el copy hero de una landing page de ${b}. Oferta: ${t}. Headline, Subheadline, 3 beneficios clave y CTA principal.` },
 ];
 function TypewriterText({ text, speed = 14 }) {
   const [displayed, setDisplayed] = useState("");
