@@ -15,7 +15,6 @@ const CONTENT_TYPES = [
   { id: "linkedin", label: "LinkedIn", icon: "💼", prompt: (b, t) => Escribí un post de LinkedIn para ${b} sobre: ${t}. Tono experto. Gancho inicial potente, desarrollo y conclusión. Máx 200 palabras. },
   { id: "landing", label: "Landing Page", icon: "🚀", prompt: (b, t) => Creá el copy hero de una landing page de ${b}. Oferta: ${t}. Headline, Subheadline, 3 beneficios clave y CTA principal. },
 ];
-
 function TypewriterText({ text, speed = 14 }) {
   const [displayed, setDisplayed] = useState("");
   const [done, setDone] = useState(false);
