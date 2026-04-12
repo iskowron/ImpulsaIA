@@ -1,0 +1,17 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: #07070d; }
+::-webkit-scrollbar-thumb { background: rgba(245,158,11,0.3); border-radius: 4px; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+@keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+@keyframes fadeIn { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+@keyframes slideUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+@keyframes spin { from{transform:rotate(0)} to{transform:rotate(360deg)} }
+.btn-primary { background: linear-gradient(135deg,#f59e0b,#f97316); border: none; color: #07070d; font-weight: 700; cursor: pointer; transition: all 0.2s; font-family: sans-serif; }
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(245,158,11,0.3); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.btn-ghost { background: transparent; border: 1px solid rgba(245,158,11,0.3); color: #f0ece0; cursor: pointer; transition: all 0.2s; font-family: sans-serif; }
+.btn-ghost:hover { border-color: #f59e0b; background: rgba(245,158,11,0.08); }
+.input-field { background: #0e0e18; border: 1px solid #1a1a2e; color: #f0ece0; font-family: sans-serif; outline: none; transition: border 0.2s; }
+.input-field:focus { border-color: rgba(245,158,11,0.5); }
+.fade-in { animation: slideUp 0.5s ease forwards; }
