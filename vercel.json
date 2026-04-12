@@ -1,9 +1,7 @@
 {
   "functions": {
-    "api/generate.js": { "maxDuration": 30 },
-    "api/stripe-checkout.js": { "maxDuration": 30 },
-    "api/mp-checkout.js": { "maxDuration": 30 },
-    "api/webhook-stripe.js": { "maxDuration": 30 },
-    "api/webhook-mp.js": { "maxDuration": 30 }
+    "api/*.js": {
+      "maxDuration": 30
+    }
   }
 }
