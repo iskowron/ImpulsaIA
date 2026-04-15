@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { supabase } from "./supabase.js";
 
-// A-01 HARDENED: El email/rol de admin se verifica server-side via Supabase JWT.
-// NUNCA exponer identificadores de admin en el bundle cliente.
+// SEC C-01: VITE_ADMIN_EMAIL eliminado del bundle cliente.
+// El rol admin se verifica desde profile.role (columna en Supabase DB).
 
 const RUBROS = [
   { id: "ropa", label: "Indumentaria", icon: "👗" },
@@ -231,22 +231,21 @@ function AuthScreen({ onAuth, onDemo, startMode = "landing" }) {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  // M-01 HARDENED: Validación de contraseña antes de enviar a Supabase
-  // OWASP recomienda mínimo 8 chars para apps con datos de pago.
+  // SEC M-01: Validación de contraseña fuerte (OWASP: mín 8 chars para apps con pagos)
   const validatePassword = (pwd) => {
-    if (pwd.length < 8) return "La contraseña debe tener al menos 8 caracteres.";
-    if (!/[A-Z]/.test(pwd)) return "Debe incluir al menos una letra mayúscula.";
-    if (!/[0-9]/.test(pwd)) return "Debe incluir al menos un número.";
+    if (pwd.length < 8)       return "La contraseña debe tener al menos 8 caracteres.";
+    if (!/[A-Z]/.test(pwd))   return "Debe incluir al menos una letra mayúscula.";
+    if (!/[0-9]/.test(pwd))   return "Debe incluir al menos un número.";
     return null;
   };
 
   const handle = async () => {
     setError(""); setSuccess(""); setLoading(true);
 
-    // M-01: Validar contraseña en registro antes de llamar a Supabase
+    // SEC M-01: Validar contraseña ANTES de llamar a Supabase
     if (mode === "register") {
-      const pwdError = validatePassword(password);
-      if (pwdError) { setError(pwdError); setLoading(false); return; }
+      const pwdErr = validatePassword(password);
+      if (pwdErr) { setError(pwdErr); setLoading(false); return; }
     }
 
     try {
@@ -254,11 +253,22 @@ function AuthScreen({ onAuth, onDemo, startMode = "landing" }) {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         onAuth(data.user);
+
       } else {
-        const { error } = await supabase.auth.signUp({ email, password });
+        // REG-FIX: Capturar data para detectar si Supabase creó sesión automática
+        const { data, error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
-        setSuccess("📧 Te enviamos un email de confirmación a " + email + ". Hacé clic en el link del mail y luego volvé aquí para iniciar sesión. Revisá también la carpeta de spam.");
-        setMode("login");
+
+        if (data?.session && data?.user) {
+          // Email confirmation DESACTIVADA en Supabase → sesión automática
+          // Entrar directo al app sin pedir confirmación de email
+          onAuth(data.user);
+        } else {
+          // Email confirmation ACTIVADA (configuración recomendada para seguridad)
+          // El usuario debe confirmar su email antes de poder ingresar
+          setSuccess("📧 Cuenta creada. Te enviamos un email de confirmación a " + email + ". Hacé clic en el link del mail y luego volvé aquí a iniciar sesión. Revisá también el spam.");
+          setMode("login");
+        }
       }
     } catch (e) {
       const msg = e.message || "";
@@ -267,7 +277,7 @@ function AuthScreen({ onAuth, onDemo, startMode = "landing" }) {
       else if (msg === "User already registered")
         setError("Ya existe una cuenta con ese email. Iniciá sesión.");
       else if (msg.toLowerCase().includes("email not confirmed"))
-        setError("Primero confirmá tu email — te enviamos un link a tu casilla. Revisá también el spam.");
+        setError("⚠ Primero confirmá tu email. Te enviamos el link a " + email + ". Revisá también el spam.");
       else if (msg.toLowerCase().includes("invalid email"))
         setError("El formato del email no es válido.");
       else if (msg.toLowerCase().includes("password"))
@@ -285,11 +295,11 @@ function AuthScreen({ onAuth, onDemo, startMode = "landing" }) {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          // M-03 HARDENED: Usar siempre el dominio canónico con www para evitar
-          // redirect HTTP 301 intermedio que expone el token OAuth en logs del servidor.
-          // Asegurarse de que este mismo URL esté registrado en:
-          // Supabase → Authentication → URL Configuration → Redirect URLs
-          // Google Cloud Console → OAuth 2.0 → Authorized redirect URIs
+          // SEC M-03: Dominio canónico con www. Sin esto, el 301 redirect
+          // intermedio puede perder el token OAuth en los logs del servidor.
+          // IMPORTANTE: Este mismo URL debe estar registrado en:
+          //   - Supabase → Authentication → URL Configuration → Redirect URLs
+          //   - Google Cloud Console → OAuth 2.0 → Authorized redirect URIs
           redirectTo: "https://www.latinalabs.app",
           skipBrowserRedirect: false,
         },
@@ -303,6 +313,7 @@ function AuthScreen({ onAuth, onDemo, startMode = "landing" }) {
 
   const authFormJSX = (
     <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 24, padding: "32px 28px", boxShadow: "0 40px 80px rgba(0,0,0,0.5)" }}>
+      {/* SEC: type="button" evita que el click en Google dispare un submit del form */}
       <button type="button" onClick={handleGoogle} disabled={googleLoading || loading}
         style={{ width: "100%", padding: "13px", background: "rgba(255,255,255,0.06)", border: "1.5px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#f1f5f9", fontWeight: 600, fontSize: 14, cursor: "pointer", fontFamily: "'Inter',sans-serif", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 18, transition: "all 0.2s" }}
         onMouseOver={e => e.currentTarget.style.background = "rgba(255,255,255,0.09)"}
@@ -317,6 +328,8 @@ function AuthScreen({ onAuth, onDemo, startMode = "landing" }) {
         <span style={{ fontSize: 11, color: "#334155", fontWeight: 500 }}>O con tu email</span>
         <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.07)" }} />
       </div>
+      {/* SEC: type="button" CRÍTICO — sin esto el browser hace submit en cada click
+          y borra el foco del input activo, causando que el cursor desaparezca */}
       <div style={{ display: "flex", background: "rgba(0,0,0,0.4)", borderRadius: 12, padding: 4, marginBottom: 20 }}>
         {["login","register"].map(m => (
           <button type="button" key={m} onClick={() => { setMode(m); setError(""); setSuccess(""); }}
@@ -325,28 +338,38 @@ function AuthScreen({ onAuth, onDemo, startMode = "landing" }) {
           </button>
         ))}
       </div>
+      {/* <form> permite Tab entre campos, Enter para submit, y autoComplete nativo del browser */}
       <form onSubmit={e => { e.preventDefault(); handle(); }} noValidate>
         <div style={{ marginBottom: 14 }}>
           <label style={{ display: "block", fontSize: 12, color: "#64748b", marginBottom: 6, fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase" }}>Email</label>
-          <input className="ll-input" value={email} onChange={e => setEmail(e.target.value)} placeholder="tu@email.com" type="email" autoComplete="email" inputMode="email" />
+          <input
+            className="ll-input"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            placeholder="tu@email.com"
+            type="email"
+            autoComplete="email"
+            inputMode="email"
+          />
         </div>
         <div style={{ marginBottom: 22 }}>
           <label style={{ display: "block", fontSize: 12, color: "#64748b", marginBottom: 6, fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase" }}>Contrasena</label>
-        <div style={{ marginBottom: 22 }}>
-          <label style={{ display: "block", fontSize: 12, color: "#64748b", marginBottom: 6, fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase" }}>Contrasena</label>
-          <input className="ll-input" value={password} onChange={e => setPassword(e.target.value)} placeholder="Min. 8 chars, 1 mayúscula, 1 número" type="password" autoComplete={mode === "register" ? "new-password" : "current-password"} />
+          <input
+            className="ll-input"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            placeholder={mode === "register" ? "Min. 8 chars, 1 mayúscula, 1 número" : "Tu contraseña"}
+            type="password"
+            autoComplete={mode === "register" ? "new-password" : "current-password"}
+          />
+          {/* SEC M-01: Indicador visual de fortaleza de contraseña */}
           {mode === "register" && password.length > 0 && (
             <div style={{ marginTop: 6, display: "flex", gap: 4, alignItems: "center" }}>
-              {[
-                password.length >= 8,
-                /[A-Z]/.test(password),
-                /[0-9]/.test(password),
-                password.length >= 12,
-              ].map((ok, i) => (
+              {[password.length >= 8, /[A-Z]/.test(password), /[0-9]/.test(password), password.length >= 12].map((ok, i) => (
                 <div key={i} style={{ height: 3, flex: 1, borderRadius: 99, background: ok ? (i < 2 ? "#f59e0b" : "#10b981") : "rgba(255,255,255,0.08)", transition: "background 0.2s" }} />
               ))}
               <span style={{ fontSize: 10, color: "#475569", whiteSpace: "nowrap", marginLeft: 4 }}>
-                {password.length < 8 ? "Muy corta" : !/[A-Z]/.test(password) || !/[0-9]/.test(password) ? "Débil" : password.length < 12 ? "Aceptable" : "Fuerte"}
+                {password.length < 8 ? "Muy corta" : !/[A-Z]/.test(password) || !/[0-9]/.test(password) ? "Débil" : password.length < 12 ? "Aceptable" : "Fuerte ✓"}
               </span>
             </div>
           )}
@@ -515,6 +538,7 @@ function AuthScreen({ onAuth, onDemo, startMode = "landing" }) {
       <style>{GLOBAL_CSS}</style>
       <div style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(rgba(245,158,11,0.06) 1px, transparent 1px)", backgroundSize: "40px 40px", pointerEvents: "none" }} />
       <div style={{ position: "absolute", top: -200, left: -200, width: 600, height: 600, borderRadius: "50%", background: "radial-gradient(circle, rgba(245,158,11,0.12) 0%, transparent 70%)", pointerEvents: "none", animation: "ll-pulse 6s ease-in-out infinite" }} />
+      {/* SEC: animación eliminada — causaba remount del form y pérdida del foco/cursor */}
       <div style={{ width: "100%", maxWidth: 420, position: "relative", zIndex: 1 }}>
         <div style={{ textAlign: "center", marginBottom: 32 }}>
           <div style={{ width: 48, height: 48, background: "linear-gradient(135deg,#f59e0b,#f97316)", borderRadius: 14, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 22, marginBottom: 16, boxShadow: "0 0 40px rgba(245,158,11,0.4)" }}>⚡</div>
@@ -575,32 +599,27 @@ export default function LatinLabs() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // M-02 HARDENED: Logout automático por inactividad (30 minutos)
-  // Protege sesiones en dispositivos compartidos o dejados sin atención.
+  // SEC M-02: Logout automático por inactividad (30 min)
+  // Protege sesiones en dispositivos compartidos o dejados desbloqueados.
   useEffect(() => {
     if (!user) return;
-    const TIMEOUT_MS = 30 * 60 * 1000; // 30 minutos
-    let timer = null;
-
-    const resetTimer = () => {
-      if (timer) clearTimeout(timer);
+    const IDLE_MS = 30 * 60 * 1000;
+    let timer;
+    const reset = () => {
+      clearTimeout(timer);
       timer = setTimeout(async () => {
-        console.log("[session] Sesión expirada por inactividad — cerrando sesión");
         await supabase.auth.signOut();
         setUser(null); setProfile(null); setResult(""); setHistory([]);
-      }, TIMEOUT_MS);
+      }, IDLE_MS);
     };
-
-    const events = ["mousedown", "mousemove", "keydown", "scroll", "touchstart", "click"];
-    events.forEach(e => window.addEventListener(e, resetTimer, { passive: true }));
-    resetTimer(); // iniciar el timer
-
-    return () => {
-      if (timer) clearTimeout(timer);
-      events.forEach(e => window.removeEventListener(e, resetTimer));
-    };
+    const events = ["mousedown", "mousemove", "keydown", "scroll", "touchstart"];
+    events.forEach(ev => window.addEventListener(ev, reset, { passive: true }));
+    reset();
+    return () => { clearTimeout(timer); events.forEach(ev => window.removeEventListener(ev, reset)); };
   }, [user]);
 
+  // REG-FIX: Cargar perfil. Si el usuario es nuevo y no tiene row en profiles,
+  // crearlo automáticamente con los defaults. Sin esto, la app queda en blanco.
   useEffect(() => {
     if (!user) return;
     supabase.from("profiles").select("*").eq("id", user.id).single()
@@ -610,8 +629,8 @@ export default function LatinLabs() {
           if (!data.rubro_configurado) setRubroSelected(false);
           if (data.rubro_configurado) setSelectedRubro(data.rubro_configurado);
         } else {
-          // Usuario nuevo — crear row con defaults para que la app funcione
-          const defaultProfile = {
+          // Usuario nuevo sin row en profiles → crear con defaults
+          const defaults = {
             id: user.id,
             email: user.email,
             plan: "gratis",
@@ -622,10 +641,9 @@ export default function LatinLabs() {
           };
           const { data: created } = await supabase
             .from("profiles")
-            .upsert(defaultProfile, { onConflict: "id" })
-            .select()
-            .single();
-          setProfile(created || defaultProfile);
+            .upsert(defaults, { onConflict: "id" })
+            .select().single();
+          setProfile(created || defaults);
         }
       });
   }, [user]);
@@ -651,17 +669,16 @@ export default function LatinLabs() {
     setAdminLoading(true);
     setAdminError(null);
     try {
-      const { data: { session: adminSession } } = await supabase.auth.getSession();
-      const adminToken = adminSession?.access_token || "";
+      // SEC C-01: Bearer JWT de Supabase verificado server-side.
+      // VITE_ADMIN_SECRET_TOKEN fue eliminado — estaba expuesto en el bundle JS.
+      const { data: { session: adminSess } } = await supabase.auth.getSession();
       const [profilesRes, vercelRes] = await Promise.all([
         supabase
           .from("profiles")
           .select("id, email, plan, generaciones_usadas, generaciones_limite, subscription_status, payment_provider, created_at")
           .order("created_at", { ascending: false }),
         fetch("/api/admin-stats", {
-          // C-01 HARDENED: JWT de Supabase verificado server-side.
-          // El antiguo VITE_ADMIN_SECRET_TOKEN estaba expuesto en el bundle.
-          headers: { "Authorization": `Bearer ${adminToken}` }
+          headers: { "Authorization": `Bearer ${adminSess?.access_token || ""}` }
         }).then(r => r.json()).catch(() => ({ vercel: null })),
       ]);
 
@@ -812,8 +829,7 @@ export default function LatinLabs() {
   const genPct = Math.min((genUsadas / genLimite) * 100, 100);
   const atLimit = genUsadas >= genLimite;
   const rubroActual = RUBROS.find(r => r.id === selectedRubro);
-  // A-01 HARDENED: El rol admin viene del perfil de Supabase (columna 'role'),
-  // no de un email hardcodeado en el bundle cliente que cualquiera podía leer.
+  // SEC A-01: Rol admin verificado desde Supabase DB (profile.role), no email en bundle.
   const isAdmin = profile?.role === "admin";
   const tabs = [["generator","Generar"], ...(demoMode ? [] : [["calendar","Calendario"], ["history","Historial"], ["plans","Planes"]]), ...(isAdmin ? [["admin","⚡ Admin"]] : [])];
 
@@ -1196,15 +1212,19 @@ export default function LatinLabs() {
                         body: JSON.stringify({ plan: p.name.toLowerCase(), userId: user?.id || "", userEmail: user?.email || "" }),
                       });
                       const data = await res.json();
-                      if (data.url) { window.location.href = data.url; }
-                      else {
-                        console.error("[MP Checkout]", res.status, data);
+                      if (data.url) {
+                        window.location.href = data.url;
+                      } else {
+                        // SEC A-04: El servidor ya filtra el error real en producción
+                        console.error("[MP Checkout] Error:", res.status, data);
                         alert("Error al iniciar el pago: " + (data.error || "Error inesperado") + "\n\nSi el problema persiste escribinos a soporte@latinalabs.app");
-                        btn.disabled = false; btn.textContent = original;
+                        btn.disabled = false;
+                        btn.textContent = original;
                       }
                     } catch (err) {
                       alert("Error de conexión. Verificá tu internet e intentá de nuevo.");
-                      btn.disabled = false; btn.textContent = original;
+                      btn.disabled = false;
+                      btn.textContent = original;
                     }
                   }}
                     style={{ padding: "12px", background: p.popular ? "linear-gradient(135deg,#f59e0b,#f97316)" : "rgba(0,158,227,0.08)", border: p.popular ? "none" : "1px solid rgba(0,158,227,0.25)", borderRadius: 10, color: p.popular ? "#0a0a0f" : "#38bdf8", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "'Inter',sans-serif", boxShadow: p.popular ? "0 8px 24px rgba(245,158,11,0.3)" : "none" }}>
